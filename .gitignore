@@ -35,3 +35,7 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+/Task3/tech_radar/.techradar
+/Task3/tech_radar/node_modules
+/Task4/.env
+Task4/.terraform.lock.hcl
