@@ -6,35 +6,62 @@
 title: Диаграмма автоматизации развёртывания
 ---
 flowchart TD
+    A[Git-репозиторий]:::cicd
+    B["CI/CD сервер<br/>(GitLab CI / Jenkins)"]:::cicd
+    C[Сборка образа<br/>docker build]:::cicd
+    D[Запуск тестов]:::cicd
+    E[Сохранение образа<br/>в Container Registry]:::cicd
 
-    A[Git-репозиторий]:::node
-    B[CI/CD]:::node
-    C[Сборка образа<br/>docker build]:::node
-    D[Запуск тестов]:::node
-    E[Создание инфраструктуры<br/>terraform plan<br/>terraform apply]:::node
-    F[Деплой приложения]:::node
+    A -->|Push / Merge в main| B
+    B --> C
+    C --> D
+    D --> E
 
-    subgraph Infrastructure
+    Registry[(Container Registry<br/>Yandex Container Registry)]:::manual
+
+    E --> Registry
+
+    subgraph Terraform_Managed ["Управляется Terraform"]
         direction TB
-        G[VM OS]:::infra
-        H[CPU]:::infra
-        I[RAM]:::infra
-        J[Disk HDD/SSD]:::infra
-        K[Network]:::infra
-        L[Availability Zone]:::infra
+        TF_Plan[terraform plan]:::tf
+        TF_Apply[terraform apply]:::tf
+
+        subgraph Infrastructure ["Инфраструктура Yandex Cloud"]
+            direction TB
+            Subnet["yandex_vpc_network<br>yandex_vpc_subnet<br/>(CIDR, zone)"]:::tf
+            Disk[yandex_compute_disk<br/>network-ssd, 20 ГБ]:::tf
+            VM[yandex_compute_instance]:::tf
+            PublicIP[Публичный IP<br/>через NAT=true]:::tf
+
+            Subnet --> VM
+            Disk --> VM
+            VM --> PublicIP
+        end
     end
 
-    M[Container registry]:::node
+    D -->|Успешные тесты| TF_Plan
+    TF_Plan --> TF_Apply
+    TF_Apply --> Infrastructure
 
-    A -->|Push/Merge to main branch| B
-    B --> C
-    C -->|Сохранение артефакта| M
-    C --> D
-    M --> D
-    D --> E
-    E --> Infrastructure
-    Infrastructure --> F
+    subgraph Manual_Steps ["Выполняется вручную / отдельными инструментами"]
+        Deploy["Деплой приложения<br/>(например, через Ansible,<br/>cloud-init или SSH)"]:::manual
+        DockerSetup[Установка Docker<br/>и запуск контейнера]:::manual
+    end
+
+    Registry -.->|Образ доступен| Deploy
+    Infrastructure --> Deploy
+    Deploy --> DockerSetup
+
+    classDef cicd fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px
+    classDef tf fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
+    classDef manual fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef infra fill:#d1c4e9,stroke:#311b92
+
+    class A,B,C,D,E cicd
+    class TF_Plan,TF_Apply,Net,Subnet,Disk,VM,PublicIP tf
+    class Registry,Deploy,DockerSetup manual
 ```
+
 * [Диаграмма автоматизации развёртывания](diagram.png)
 
 # Декларативный подход развёртывания инфраструктуры
@@ -84,6 +111,7 @@ yc init
 # выяснениие folder_id итп.
 
 terraform init
+$env:YC_TOKEN = "t1.9***"
 terraform plan
 terraform apply
 

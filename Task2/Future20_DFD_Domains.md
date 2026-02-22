@@ -6,22 +6,24 @@
 ---
 title: Диаграмма потока данных «Будущее 2.0»
 ---
-flowchart TB
+flowchart LR
     Patient(["Клиент"]) -- Запросы, данные пациента --> ClientService["Клиентский сервис"]
     Patient -- Платежи --> PaymentService["Сервис платежей"]
     ClientService -- События клиентов, услуги --> CommonBus["Common Bus / Camel"]
     PaymentService -- Транзакции, счета --> CommonBus
     CommonBus -- Сырые события --> DWH[("DWH")]
-    DWH -- Загрузка --> BatchProcess["Batch Processing / Airflow"]
+    %%DWH -- Загрузка --> BatchProcess["Batch Processing / Airflow"]
+    CommonBus -- Загрузка --> BatchProcess["Batch Processing / Airflow"]
     BatchProcess -- Данные для ML --> MLStorage[("ML Data / Object Storage")]
     BizAnalytics["Бизнес-аналитика"] -- Отчёты --> ChiefDoctor(["Главный врач"])
     BIPortal["BI-портал / Power BI"] -- Отчёты --> FinDirector(["Финансовый директор"])
     MLStorage -- Обучающие данные --> MLOpsProcess["MLOps"]
-    MedicalDB[("Medical Data<br>Snowflake/Redshift")] --> BizAnalytics
-    FinancialDB[("Financial Data<br>ClickHouse")] --> BIPortal
+    MedicalDB[("Medical Data<br>Snowflake/Redshift")] -- Агрегированные данные --> BizAnalytics0["Анонимизация данных<br>Redshift DDM"]
+    BizAnalytics0 -- Анонимизированные мед. данные --> BizAnalytics
+    FinancialDB[("Financial Data<br>ClickHouse")] -- Очищенные данные --> BIPortal
     BatchProcess -- Финансовые данные --> FinancialDB
     BatchProcess -- Медицинские данные --> MedicalDB
-    MLOpsProcess --> n3(["ML-инженер"])
+    MLOpsProcess -- Токены, векторы --> n3(["ML-инженер"])
 
      Patient:::external
      ClientService:::process
@@ -31,6 +33,7 @@ flowchart TB
      BatchProcess:::process
      MLStorage:::storage
      BizAnalytics:::process
+     BizAnalytics0:::process
      ChiefDoctor:::external
      BIPortal:::process
      FinDirector:::external

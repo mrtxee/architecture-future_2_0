@@ -56,6 +56,5 @@ resource "yandex_compute_instance" "testvm" {
 
   metadata = {
     ssh-keys  = "ubuntu:${file(var.public_key)}"
-    user-data = "${file("./meta.txt")}"
   }
 }
